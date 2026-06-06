@@ -4,171 +4,183 @@ import api from '../api/axios'
 import { useToast } from '../components/Toast'
 
 export default function Boards() {
-    const [boards, setBoards] = useState([])
-    const [title, setTitle] = useState('')
-    const [titleError, setTitleError] = useState('')
-    const [loading, setLoading] = useState(true)
-    const [creating, setCreating] = useState(false)
-    const [deletingId, setDeletingId] = useState(null)
-    const navigate = useNavigate()
-    const { showToast, ToastComponent } = useToast()
+  const [boards, setBoards] = useState([])
+  const [title, setTitle] = useState('')
+  const [titleError, setTitleError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const navigate = useNavigate()
+  const { showToast, ToastComponent } = useToast()
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+  useEffect(() => {
+    fetchBoards()
+  }, [])
 
-    // Load boards on mount
-    useEffect(() => {
-        const fetchBoards = async () => {
-            try {
-                const { data } = await api.get('/boards')
-                if (data.success) {
-                    setBoards(data.data)
-                    if (data.data.length === 0) showToast(data.message, 'info')
-                }
-            } catch (err) {
-                const msg = err.response?.data?.message || 'Could not load boards.'
-                showToast(msg, 'error')
-                // If unauthorized, kick to login
-                if (err.response?.status === 401) navigate('/login')
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchBoards()
-    }, [])
-
-    const validateTitle = (val) => {
-        if (!val.trim()) return 'Board name is required.'
-        if (val.trim().length < 2) return 'Board name must be at least 2 characters.'
-        if (val.trim().length > 50) return 'Board name must be under 50 characters.'
-        return ''
+  const fetchBoards = async () => {
+    try {
+      const { data } = await api.get('/boards')
+      if (data.success) setBoards(data.data)
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not load boards.', 'error')
+      if (err.response?.status === 401) navigate('/login')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const createBoard = async () => {
-        const err = validateTitle(title)
-        if (err) { setTitleError(err); return }
-        setTitleError('')
-        setCreating(true)
-        try {
-            const { data } = await api.post('/boards', { title })
-            if (data.success) {
-                setBoards([data.data, ...boards])
-                setTitle('')
-                showToast(data.message, 'success')
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || 'Could not create board.'
-            showToast(msg, 'error')
-        } finally {
-            setCreating(false)
-        }
+  const createBoard = async () => {
+    if (!title.trim()) { setTitleError('Board name is required.'); return }
+    if (title.trim().length < 2) { setTitleError('At least 2 characters.'); return }
+    setTitleError('')
+    setCreating(true)
+    try {
+      const { data } = await api.post('/boards', { title })
+      if (data.success) { setBoards([data.data, ...boards]); setTitle(''); showToast(data.message, 'success') }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not create board.', 'error')
+    } finally {
+      setCreating(false)
     }
+  }
 
-    const deleteBoard = async (e, board) => {
-        e.stopPropagation()
-        if (!window.confirm(`Delete "${board.title}" and all its tasks? This cannot be undone.`)) return
-        setDeletingId(board._id)
-        try {
-            const { data } = await api.delete('/boards/' + board._id)
-            if (data.success) {
-                setBoards(boards.filter(b => b._id !== board._id))
-                showToast(data.message, 'success')
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || 'Could not delete board.'
-            showToast(msg, 'error')
-        } finally {
-            setDeletingId(null)
-        }
+  const deleteBoard = async (e, board) => {
+    e.stopPropagation()
+    if (!window.confirm(`Delete "${board.title}"? This cannot be undone.`)) return
+    setDeletingId(board._id)
+    try {
+      const { data } = await api.delete('/boards/' + board._id)
+      if (data.success) { setBoards(boards.filter(b => b._id !== board._id)); showToast(data.message, 'success') }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not delete board.', 'error')
+    } finally {
+      setDeletingId(null)
     }
+  }
 
-    const logout = () => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        navigate('/login')
-    }
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    navigate('/login')
+  }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {ToastComponent}
+  const myBoards = boards.filter(b => b.owner._id === user.id || b.owner === user.id)
+  const sharedBoards = boards.filter(b => b.owner._id !== user.id && b.owner !== user.id)
 
-            {/* Navbar */}
-            <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-                <h1 className="text-lg font-semibold text-gray-900">TaskFlow</h1>
-                <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-500">Hi, {user.name || 'User'}</span>
-                    <button onClick={logout} className="text-sm text-red-500 hover:underline">Logout</button>
-                </div>
-            </nav>
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      {ToastComponent}
 
-            <div className="max-w-3xl mx-auto px-6 py-10">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">My Boards</h2>
-
-                {/* Create board form */}
-                <div className="bg-white border border-gray-100 rounded-xl p-5 mb-8 shadow-sm">
-                    <p className="text-sm font-medium text-gray-700 mb-3">Create a new board</p>
-                    <div className="flex gap-2">
-                        <div className="flex-1">
-                            <input
-                                type="text"
-                                placeholder="e.g. Website Redesign, Sprint 4..."
-                                value={title}
-                                maxLength={50}
-                                onChange={e => {
-                                    setTitle(e.target.value)
-                                    if (titleError) setTitleError(validateTitle(e.target.value))
-                                }}
-                                onKeyDown={e => e.key === 'Enter' && createBoard()}
-                                className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition
-                  ${titleError ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
-                            />
-                            {titleError && <p className="text-red-500 text-xs mt-1">{titleError}</p>}
-                            <p className="text-xs text-gray-400 mt-1 text-right">{title.length}/50</p>
-                        </div>
-                        <button
-                            onClick={createBoard}
-                            disabled={creating}
-                            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2 self-start"
-                        >
-                            {creating ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : '+'}
-                            {creating ? 'Creating...' : 'Create'}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Boards list */}
-                {loading ? (
-                    <div className="flex justify-center py-16">
-                        <span className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-                    </div>
-                ) : boards.length === 0 ? (
-                    <div className="text-center py-16 text-gray-400">
-                        <p className="text-4xl mb-3">📋</p>
-                        <p className="font-medium text-gray-600">No boards yet</p>
-                        <p className="text-sm mt-1">Create your first board above to get started</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {boards.map(b => (
-                            <div
-                                key={b._id}
-                                onClick={() => navigate('/board/' + b._id)}
-                                className="bg-white border border-gray-100 rounded-xl p-5 cursor-pointer hover:shadow-md hover:border-emerald-200 transition group relative"
-                            >
-                                <p className="font-medium text-gray-800 group-hover:text-emerald-700 transition pr-8">{b.title}</p>
-                                <p className="text-xs text-gray-400 mt-1">{new Date(b.createdAt).toLocaleDateString()}</p>
-                                <button
-                                    onClick={e => deleteBoard(e, b)}
-                                    disabled={deletingId === b._id}
-                                    className="absolute top-4 right-4 text-gray-300 hover:text-red-400 transition text-lg leading-none"
-                                    title="Delete board"
-                                >
-                                    {deletingId === b._id ? '...' : '×'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+      {/* Navbar */}
+      <nav className="sticky top-0 z-30 flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ background: 'var(--accent)' }}>T</div>
+          <span className="font-semibold" style={{ color: 'var(--text)' }}>TaskFlow</span>
         </div>
-    )
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: 'var(--accent)' }}>
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm hidden sm:block" style={{ color: 'var(--text)' }}>{user.name}</span>
+          </div>
+          <button onClick={logout} className="text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+            Logout
+          </button>
+        </div>
+      </nav>
+
+      <div className="max-w-4xl mx-auto px-6 py-10">
+
+        {/* Create board */}
+        <div className="rounded-xl p-5 mb-10" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>New Board</h2>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <input type="text" placeholder="e.g. Sprint 4, Website Redesign..."
+                value={title} maxLength={50}
+                onChange={e => { setTitle(e.target.value); if (titleError) setTitleError('') }}
+                onKeyDown={e => e.key === 'Enter' && createBoard()}
+                className="tf-input w-full"
+                style={{ borderColor: titleError ? 'var(--danger)' : undefined }} />
+              {titleError && <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>{titleError}</p>}
+            </div>
+            <button onClick={createBoard} disabled={creating} className="tf-btn-primary px-5 self-start">
+              {creating ? <span className="tf-spinner" /> : '+ Create'}
+            </button>
+          </div>
+        </div>
+
+        {/* My Boards */}
+        <div className="mb-10">
+          <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>My Boards</h2>
+          {loading ? (
+            <div className="flex justify-center py-16"><span className="tf-spinner-lg" /></div>
+          ) : myBoards.length === 0 ? (
+            <div className="text-center py-12 rounded-xl" style={{ border: '2px dashed var(--border)' }}>
+              <p className="text-2xl mb-2">📋</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>No boards yet</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Create your first board above</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myBoards.map(b => (
+                <BoardCard key={b._id} board={b} userId={user.id} isOwner={true}
+                  onClick={() => navigate('/board/' + b._id)}
+                  onDelete={e => deleteBoard(e, b)}
+                  deleting={deletingId === b._id} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Shared with me */}
+        {sharedBoards.length > 0 && (
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>Shared with me</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sharedBoards.map(b => (
+                <BoardCard key={b._id} board={b} userId={user.id} isOwner={false}
+                  onClick={() => navigate('/board/' + b._id)} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BoardCard({ board, isOwner, onClick, onDelete, deleting }) {
+  const memberCount = board.members?.length || 0
+  return (
+    <div onClick={onClick} className="tf-card group cursor-pointer relative">
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
+          style={{ background: stringToColor(board.title) }}>
+          {board.title.charAt(0).toUpperCase()}
+        </div>
+        {isOwner && onDelete && (
+          <button onClick={onDelete} disabled={deleting}
+            className="opacity-0 group-hover:opacity-100 transition text-lg leading-none w-6 h-6 flex items-center justify-center rounded"
+            style={{ color: 'var(--text-muted)' }}>
+            {deleting ? '...' : '×'}
+          </button>
+        )}
+      </div>
+      <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text)' }}>{board.title}</p>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        {isOwner ? 'Owner' : `By ${board.owner?.name || 'someone'}`}
+        {memberCount > 0 && ` · ${memberCount + 1} members`}
+      </p>
+    </div>
+  )
+}
+
+function stringToColor(str) {
+  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6']
+  let hash = 0
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  return colors[Math.abs(hash) % colors.length]
 }

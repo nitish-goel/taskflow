@@ -1,3 +1,99 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* ─── Design Tokens ─────────────────────────────────── */
+:root {
+  --bg:           #0f1117;
+  --surface:      #1a1d27;
+  --surface-2:    #222535;
+  --border:       #2a2d3d;
+  --accent:       #6366f1;
+  --accent-hover: #4f52d4;
+  --accent-light: #6366f115;
+  --text:         #e8eaf0;
+  --text-muted:   #7c7f9a;
+  --danger:       #ef4444;
+  --success:      #10b981;
+  --col-todo:     #1a1d27;
+  --col-doing:    #1a2035;
+  --col-done:     #1a2a25;
+  --radius:       10px;
+  --shadow:       0 2px 12px rgba(0,0,0,0.4);
+}
+
+/* ─── Base ────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Reusable Components ─────────────────────────────── */
+@layer components {
+
+  .tf-input {
+    @apply text-sm px-3 py-2.5 rounded-lg outline-none transition-all;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .tf-input::placeholder { color: var(--text-muted); }
+  .tf-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  .tf-btn-primary {
+    @apply text-sm font-medium rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2;
+    background: var(--accent);
+    color: #fff;
+  }
+  .tf-btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .tf-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tf-btn-secondary {
+    @apply text-sm font-medium rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .tf-btn-secondary:hover { background: var(--surface-2); }
+
+  .tf-card {
+    @apply rounded-xl p-3.5 transition-all;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .tf-card:hover { border-color: var(--accent); }
+
+  .tf-spinner {
+    @apply inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin;
+    border-color: rgba(255,255,255,0.3);
+    border-top-color: #fff;
+  }
+
+  .tf-spinner-lg {
+    @apply inline-block w-8 h-8 rounded-full border-2 border-t-transparent animate-spin;
+    border-color: var(--border);
+    border-top-color: var(--accent);
+  }
+}
+
+/* ─── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Toast animation ─────────────────────────────────── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.2s ease-out; }

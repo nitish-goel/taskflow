@@ -4,153 +4,88 @@ import api from '../api/axios'
 import { useToast } from '../components/Toast'
 
 export default function Register() {
-    const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
-    const [errors, setErrors] = useState({})
-    const [loading, setLoading] = useState(false)
-    const navigate = useNavigate()
-    const { showToast, ToastComponent } = useToast()
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+  const { showToast, ToastComponent } = useToast()
 
-    // --- Client-side field validation ---
-    const validate = () => {
-        const e = {}
-        if (!form.name.trim()) e.name = 'Name is required.'
-        else if (form.name.trim().length < 2) e.name = 'Name must be at least 2 characters.'
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = 'Name is required.'
+    else if (form.name.trim().length < 2) e.name = 'At least 2 characters.'
+    if (!form.email.trim()) e.email = 'Email is required.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email.'
+    if (!form.password) e.password = 'Password is required.'
+    else if (form.password.length < 6) e.password = 'At least 6 characters.'
+    if (!form.confirm) e.confirm = 'Please confirm password.'
+    else if (form.confirm !== form.password) e.confirm = 'Passwords do not match.'
+    return e
+  }
 
-        if (!form.email.trim()) e.email = 'Email is required.'
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address.'
+  const handleChange = (field, value) => {
+    setForm({ ...form, [field]: value })
+    if (errors[field]) setErrors({ ...errors, [field]: '' })
+  }
 
-        if (!form.password) e.password = 'Password is required.'
-        else if (form.password.length < 6) e.password = 'Password must be at least 6 characters.'
-
-        if (!form.confirm) e.confirm = 'Please confirm your password.'
-        else if (form.confirm !== form.password) e.confirm = 'Passwords do not match.'
-
-        return e
+  const submit = async (e) => {
+    e.preventDefault()
+    const fieldErrors = validate()
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return }
+    setLoading(true)
+    try {
+      const { data } = await api.post('/auth/register', { name: form.name.trim(), email: form.email.trim(), password: form.password })
+      if (!data.success) { showToast(data.message, 'error'); return }
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      showToast(data.message, 'success')
+      setTimeout(() => navigate('/boards'), 800)
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Registration failed.', 'error')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const handleChange = (field, value) => {
-        setForm({ ...form, [field]: value })
-        // Clear error for that field as user types
-        if (errors[field]) setErrors({ ...errors, [field]: '' })
-    }
+  const fields = [
+    { key: 'name', label: 'Full Name', type: 'text', placeholder: 'John Doe' },
+    { key: 'email', label: 'Email', type: 'email', placeholder: 'you@example.com' },
+    { key: 'password', label: 'Password', type: 'password', placeholder: 'Min. 6 characters' },
+    { key: 'confirm', label: 'Confirm Password', type: 'password', placeholder: 'Re-enter password' },
+  ]
 
-    const submit = async (e) => {
-        e.preventDefault()
-        const fieldErrors = validate()
-        if (Object.keys(fieldErrors).length > 0) {
-            setErrors(fieldErrors)
-            return
-        }
-
-        setLoading(true)
-        try {
-            const { data } = await api.post('/auth/register', {
-                name: form.name.trim(),
-                email: form.email.trim(),
-                password: form.password
-            })
-
-            if (!data.success) {
-                showToast(data.message, 'error')
-                return
-            }
-
-            localStorage.setItem('token', data.token)
-            localStorage.setItem('user', JSON.stringify(data.user))
-            showToast(data.message, 'success')
-            setTimeout(() => navigate('/boards'), 800)
-        } catch (err) {
-            const msg = err.response?.data?.message || 'Something went wrong. Please try again.'
-            showToast(msg, 'error')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-            {ToastComponent}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-md p-8">
-
-                <div className="mb-8">
-                    <h1 className="text-2xl font-semibold text-gray-900">Create your account</h1>
-                    <p className="text-gray-500 text-sm mt-1">Start organizing your work with TaskFlow</p>
-                </div>
-
-                <form onSubmit={submit} noValidate className="space-y-5">
-
-                    {/* Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input
-                            type="text"
-                            placeholder="John Doe"
-                            value={form.name}
-                            onChange={e => handleChange('name', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition
-                ${errors.name ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200' : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
-                        />
-                        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                            type="email"
-                            placeholder="you@example.com"
-                            value={form.email}
-                            onChange={e => handleChange('email', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition
-                ${errors.email ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200' : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
-                        />
-                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                    </div>
-
-                    {/* Password */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input
-                            type="password"
-                            placeholder="Min. 6 characters"
-                            value={form.password}
-                            onChange={e => handleChange('password', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition
-                ${errors.password ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200' : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
-                        />
-                        {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                        <input
-                            type="password"
-                            placeholder="Re-enter your password"
-                            value={form.confirm}
-                            onChange={e => handleChange('confirm', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition
-                ${errors.confirm ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200' : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'}`}
-                        />
-                        {errors.confirm && <p className="text-red-500 text-xs mt-1">{errors.confirm}</p>}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                    >
-                        {loading ? (
-                            <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Creating account...</>
-                        ) : 'Create Account'}
-                    </button>
-                </form>
-
-                <p className="text-center text-sm text-gray-500 mt-6">
-                    Already have an account?{' '}
-                    <Link to="/login" className="text-emerald-600 font-medium hover:underline">Sign in</Link>
-                </p>
-            </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6" style={{ background: 'var(--bg)' }}>
+      {ToastComponent}
+      <div className="w-full max-w-sm">
+        <div className="flex items-center gap-2 mb-8">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ background: 'var(--accent)' }}>T</div>
+          <span className="font-semibold" style={{ color: 'var(--text)' }}>TaskFlow</span>
         </div>
-    )
+        <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Create your account</h1>
+        <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>Free forever. No credit card needed.</p>
+
+        <form onSubmit={submit} noValidate className="space-y-4">
+          {fields.map(f => (
+            <div key={f.key}>
+              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{f.label}</label>
+              <input type={f.type} placeholder={f.placeholder} value={form[f.key]}
+                onChange={e => handleChange(f.key, e.target.value)}
+                className="tf-input w-full"
+                style={{ borderColor: errors[f.key] ? 'var(--danger)' : undefined }} />
+              {errors[f.key] && <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>{errors[f.key]}</p>}
+            </div>
+          ))}
+          <button type="submit" disabled={loading} className="tf-btn-primary w-full">
+            {loading ? <span className="tf-spinner" /> : 'Create Account'}
+          </button>
+        </form>
+
+        <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
+          Already have an account?{' '}
+          <Link to="/login" style={{ color: 'var(--accent)' }} className="font-medium hover:underline">Sign in</Link>
+        </p>
+      </div>
+    </div>
+  )
 }
