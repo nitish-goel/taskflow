@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://taskflow-s5ap.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL + '/api',
   timeout: 10000, // 10 second timeout
 })
 

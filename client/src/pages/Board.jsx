@@ -4,7 +4,7 @@ import { io } from 'socket.io-client'
 import api from '../api/axios'
 import { useToast } from '../components/Toast'
 
-const socket = io('http://localhost:8000')
+const socket = io(import.meta.env.VITE_API_URL)
 const COLS = [
     { key: 'todo', label: '📋 Todo', color: 'bg-gray-50 border-gray-200' },
     { key: 'doing', label: '⚡ Doing', color: 'bg-blue-50 border-blue-200' },
