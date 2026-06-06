@@ -8,7 +8,6 @@ A real-time collaborative task manager built with the MERN stack. Create boards,
 
 ## Screenshots
 
-> _Add a screenshot or screen recording of your Kanban board here_
 > [TaskFlow Board](./screenshots/board.png)
 
 ---
