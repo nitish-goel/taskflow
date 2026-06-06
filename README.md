@@ -8,7 +8,7 @@ A real-time collaborative task manager built with the MERN stack. Create boards,
 
 ## Screenshots
 
-> [TaskFlow Board](./screenshots/board.png)
+> ![TaskFlow Board](./screenshots/board.png)
 
 ---
 
